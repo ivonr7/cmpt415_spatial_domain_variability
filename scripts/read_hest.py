@@ -4,6 +4,7 @@ from hest import iter_hest
 
 # Read 1 sample of spatialLIBD dataset
 for sample in iter_hest('../hest_data', id_list=['MISC1']):
+    print(sample)
     adata = sample.adata
     print('\n* Scanpy adata:')
     print(adata)

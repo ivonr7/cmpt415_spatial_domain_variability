@@ -3,3 +3,6 @@ numpy
 scipy
 datasets
 scanpy
+squidpy
+matplotlib_scalebar
+scikit-image

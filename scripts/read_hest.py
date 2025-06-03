@@ -28,7 +28,7 @@ for sample in iter_hest('../hest_data', id_list=['MISC1']):
     print('\n* SpatialData conversion:')
     print(sdata)
 
-
+    print(adata.obsm['spatial'])
 
 
     # visualize the spots over a downscaled version of the full resolution image

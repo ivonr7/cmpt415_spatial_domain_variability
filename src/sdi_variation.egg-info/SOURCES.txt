@@ -1,0 +1,7 @@
+setup.py
+sdi_variation/__init__.py
+sdi_variation/add_annotation.py
+sdi_variation.egg-info/PKG-INFO
+sdi_variation.egg-info/SOURCES.txt
+sdi_variation.egg-info/dependency_links.txt
+sdi_variation.egg-info/top_level.txt

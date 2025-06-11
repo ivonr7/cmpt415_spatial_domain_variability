@@ -8,9 +8,12 @@ def plot_with_scale_bar(adata:sc.AnnData,pixel_size:float, key:str = "total_coun
         color = [key],title = "Spots within Tissue",return_fig=True
     )
     scale = ScaleBar(pixel_size,'um',box_alpha=0.5)
+    fig.legend()
     fig.gca().add_artist(scale)
-    return fig
-for sample in iter_hest('../hest_data', id_list=['MISC1']):
 
-    fig = plot_with_scale_bar(sample.adata,sample.pixel_size,show=False)
-    fig.savefig("splots_with_scale.png")
+    return fig
+if __name__ == "__main__":
+    for sample in iter_hest('../hest_data', id_list=['MISC1']):
+
+        fig = plot_with_scale_bar(sample.adata,sample.pixel_size,show=False)
+        fig.savefig("splots_with_scale.png")

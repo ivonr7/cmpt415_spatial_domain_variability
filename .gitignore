@@ -2,3 +2,4 @@ venv/*
 *.png
 *.jp*
 setup.sh
+data*

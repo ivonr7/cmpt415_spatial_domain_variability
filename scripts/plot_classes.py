@@ -1,4 +1,5 @@
 import scanpy as sc
+import squidpy as sq
 import pandas  as pd
 from pathlib import Path
 import argparse
@@ -7,9 +8,9 @@ def plot_annotations(h5_data:str,output:Path):
     cols = pd.Series(adata.obs.columns)
     for annotator in cols[cols.str.contains("cluster")]:
 
-        fig = sc.pl.spatial(
-                adata,show=False,img_key="downscaled_fullres",
-                color = [annotator],title = annotator,return_fig=True
+        fig = sq.pl.spatial_scatter(
+                adata,scale_factor = 
+                color = annotator,return_fig=True
             )
         fig.savefig(Path(output) / (annotator + ".png"))
 

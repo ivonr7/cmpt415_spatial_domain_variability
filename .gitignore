@@ -4,4 +4,5 @@ venv/*
 setup.sh
 data*
 __pycache__/*
-src
+*.egg*
+src*

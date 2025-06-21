@@ -6,3 +6,4 @@ scanpy
 squidpy
 matplotlib_scalebar
 scikit-image
+openslide

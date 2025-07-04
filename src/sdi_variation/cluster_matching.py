@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
     dist must return values where worse matches are higher
 '''
 def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
-    logging.critical(f"auto segmentaion is {img.shape} gt is {gt.shape}")
-    assert img.shape == gt.shape
+    if img.shape != gt.shape:
+            logging.critical(f"auto segmentaion is {img.shape} gt is {gt.shape}")
+
     auto_labels = np.unique(img)
     gt_labels = np.unique(gt)
     cost_matrix = np.zeros(shape=(auto_labels.size,gt_labels.size))
@@ -38,6 +39,38 @@ def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
 
 
 '''
+    Brute Force Search
+    for finding if merging any unmatched 
+    regions improves score
+'''
+def merged_score(auto:np.ndarray,gt:np.ndarray,
+                 M:np.ndarray, U:np.ndarray,
+                 dist:Callable = dice):
+    merged_scores = np.zeros(shape = (M.shape[0], U.size))
+    auto_merged, gt_mask = np.zeros(shape = auto.shape),np.zeros(shape=gt.shape)
+
+    for i,region in enumerate(range(M.shape[0])):
+        m1,m2 = M[region,:]
+        gt_mask[:,:] = 0 
+        gt_mask[gt == m2] = 1
+        for j,u in enumerate(U):
+            auto_merged[:,:] = 0
+            auto_merged[auto == m1] = 1
+            auto_merged[auto == u] = 1
+
+            merged_scores[i,j] = dice(auto_merged, gt)
+    return merged_scores
+        
+
+
+def merge(auto, gt, M, col):
+    U = np.setdiff1d(M[col,:],np.unique(auto))
+    scores = merged_score(auto,gt,M,U)
+    return U,np.argmin(scores, axis=1)
+
+
+
+'''
     Implements Multi region dice using the 
     method given in the paper (link!!)
 
@@ -46,26 +79,38 @@ def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
 '''
 def multi_region_dice(img:np.ndarray,gt:np.ndarray):
     # Compute optimal mapping between inputs
-    logging.info("calculating cost matrix")
+    logger.info("calculating cost matrix")
     cost_matrix = compute_cost(img,gt)
-    logging.info("finding mapping between regions")
+    logger.info("finding mapping between regions")
     auto_map,gt_map = linear_sum_assignment(cost_matrix)
-    if auto_map.size() < np.unique(img).size():
-        logging.warning(f"Method Under Segmented with \
-                        {np.unique(img).size() - auto_map.size()} regions left")
-    elif auto_map.size() > np.unique(img).size():
-        logging.warning(f"Method Over Segmented with \
-                        {auto_map.size() - np.unique(img).size()} regions extra")
-
+    if cost_matrix.max() == 0:
+        logging.warning(f"No correspondance Found")
+    
     # Merging
-    # For visualization
-    optimal_map = np.zeros(shape=img.shape)
-    for idx,(i,j) in enumerate(zip(auto_map,gt_map)):
-        optimal_map[img == i] = idx
-        optimal_map[gt == j] = idx
-    plt.figure()
-    plt.imshow(optimal_map)
-    plt.title("OR between matched regions")
+    M = np.array(list(zip(auto_map,gt_map)))
+
+
+    # If unmatched aut match to gt
+    if auto_map.size != np.unique(img).size: 
+        U = np.setdiff1d(M[0,:],np.unique(img))
+        scores = merged_score(img,gt,M,U)
+        best = np.argmin(scores, axis=1)
+        auto_map = []
+        for i,region in enumerate(best):
+            m1,m2 = M[region,:]
+            if cost_matrix[m1,m2] < scores[region,i]: auto_map.append((m1,U[i]))
+    
+    # if unmatched gt match to auto
+    if gt_map.size != np.unique(gt).size: 
+        U = np.setdiff1d(M[1,:],np.unique(gt))
+        scores = merged_score(gt,img,M,U)
+        best = np.argmin(scores, axis=1)
+        gt_map = []
+        for i,region in enumerate(best):
+            m1,m2 = M[region,:]
+            if cost_matrix[m1,m2] < scores[region,i]: auto_map.append((m2,U[i]))
+    
+    return auto_map, gt_map
     
 
 if __name__ == "__main__":
@@ -98,7 +143,9 @@ if __name__ == "__main__":
     automated[rr2_auto, cc2_auto] = 2
     automated[rr3_auto, cc3_auto] = 3
 
-    multi_region_dice(automated,ground_truth)
+    mapping = multi_region_dice(automated,ground_truth)
+
+    print(mapping)
     # plt.imshow(compute_cost(automated,ground_truth))
     # Visualize both
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))

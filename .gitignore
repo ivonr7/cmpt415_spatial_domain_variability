@@ -5,3 +5,4 @@ setup.sh
 data*
 __pycache__/*
 *.egg*
+output

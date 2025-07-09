@@ -4,7 +4,8 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from scanpy import anndata as an
 import argparse
-def main(ids:list,annotation_folder:str, output:str,hest_dir:str = '../../hest_data'):
+def main(annotation_folder:str, output:str,hest_dir:str = '../../hest_data'):
+    ids = [f"MISC{i}" for i in range(1,13)]
     samples = iter_hest(id_list=ids, hest_dir=hest_dir)
     annotators = Path(annotation_folder)
 
@@ -34,12 +35,7 @@ def main(ids:list,annotation_folder:str, output:str,hest_dir:str = '../../hest_d
 def parse_args():
     parser = argparse.ArgumentParser(description="Add annotations to HEST samples.")
     
-    parser.add_argument(
-        '--ids',
-        nargs='+',  # Accept multiple values as a list
-        required=True,
-        help='List of HEST sample IDs (space-separated).'
-    )
+
     
     parser.add_argument(
         '-a',
@@ -64,7 +60,6 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    main(ids=args.ids,
-         annotation_folder=args.a,
+    main(annotation_folder=args.a,
          output=args.o,
          hest_dir=args.s)

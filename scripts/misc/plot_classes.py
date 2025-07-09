@@ -9,7 +9,7 @@ def plot_annotations(h5_data:str,output:Path):
     for annotator in cols[cols.str.contains("cluster")]:
 
         fig = sq.pl.spatial_scatter(
-                adata,scale_factor = 
+                adata,
                 color = annotator,return_fig=True
             )
         fig.savefig(Path(output) / (annotator + ".png"))

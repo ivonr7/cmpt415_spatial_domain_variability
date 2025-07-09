@@ -5,22 +5,21 @@ import numpy as np
 '''
     Convert Anndata obs table into mask to use for segmentation variation analysis
 '''
-def splots_to_segmentation(vars:pd.DataFrame,clusters:pd.DataFrame|str):
+def spots_to_segmentation(vars:pd.DataFrame,clusters:pd.DataFrame|str):
     # Get Clusters 
     if type(clusters) != str:
         vars = vars.join(clusters)
         clusters = "Cluster"
      
     #Get 'array_col' 'array_row' to calculate adjacency matrix
-    print(vars)
     labeled_indicies = vars.loc[:,['array_col', 'array_row',clusters]]
     # calculate extents to get size allocate matrix
-    col_range = labeled_indicies['array_col'].max() - labeled_indicies['array_col'].min()
-    row_range = labeled_indicies['array_row'].max() - labeled_indicies['array_row'].min()
+    col_range = labeled_indicies['array_col'].max() 
+    row_range = labeled_indicies['array_row'].max() 
     
-    # Offset in case array positions can be negative
-    labeled_indicies['array_col'] += labeled_indicies['array_col'].abs().min()
-    labeled_indicies['array_row'] += labeled_indicies['array_row'].abs().min()
+    # # Offset in case array positions can be negative
+    # labeled_indicies['array_col'] += labeled_indicies['array_col'].abs().min()
+    # labeled_indicies['array_row'] += labeled_indicies['array_row'].abs().min()
 
     spot_image = np.zeros(shape=(row_range + 1,col_range + 1))
 
@@ -42,6 +41,6 @@ if __name__ == "__main__":
     clusters = pd.read_csv(
         "/home/isaac/dev/sfu/cmpt415/spatialLIBD_annotations/151507_analysis__clustering_kmeans_2_clusters_clusters.csv",
         index_col="Barcode")
-    plt.imshow(splots_to_segmentation(sample.adata.obs,clusters))
+    plt.imshow(spots_to_segmentation(sample.adata.obs,clusters))
     plt.title("Spot Mask")
     plt.show()

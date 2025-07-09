@@ -3,7 +3,8 @@ from scipy.spatial.distance import dice
 import numpy as np
 from typing import Callable
 import logging
-
+from skimage.draw import random_shapes
+import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 '''
     Implementation of multi-region dice method
@@ -47,6 +48,7 @@ def merged_score(auto:np.ndarray,gt:np.ndarray,
                  M:np.ndarray, U:np.ndarray,
                  dist:Callable = dice):
     merged_scores = np.zeros(shape = (M.shape[0], U.size))
+    print(merged_scores)
     auto_merged, gt_mask = np.zeros(shape = auto.shape),np.zeros(shape=gt.shape)
 
     for i,region in enumerate(range(M.shape[0])):
@@ -59,6 +61,7 @@ def merged_score(auto:np.ndarray,gt:np.ndarray,
             auto_merged[auto == u] = 1
 
             merged_scores[i,j] = dice(auto_merged, gt)
+    print(merged_scores)
     return merged_scores
         
 
@@ -104,6 +107,7 @@ def multi_region_dice(img:np.ndarray,gt:np.ndarray):
     if gt_map.size != np.unique(gt).size: 
         U = np.setdiff1d(M[1,:],np.unique(gt))
         scores = merged_score(gt,img,M,U)
+        print(scores)
         best = np.argmin(scores, axis=1)
         gt_map = []
         for i,region in enumerate(best):
@@ -113,46 +117,8 @@ def multi_region_dice(img:np.ndarray,gt:np.ndarray):
     return auto_map, gt_map
     
 
+
+
+
 if __name__ == "__main__":
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from skimage.draw import disk
-
-    # Create an empty 2D array
-    shape = (100, 100)
-    ground_truth = np.zeros(shape, dtype=int)
-
-    # Define 3 regions in the ground truth using circles
-    rr1, cc1 = disk((30, 30), 15)
-    rr2, cc2 = disk((70, 30), 15)
-    rr3, cc3 = disk((50, 70), 20)
-
-    ground_truth[rr1, cc1] = 1  # Region 1
-    ground_truth[rr2, cc2] = 2  # Region 2
-    ground_truth[rr3, cc3] = 3  # Region 3
-
-    # Create an automated segmentation that imperfectly matches ground truth
-    automated = np.zeros(shape, dtype=int)
-
-    # Shift regions slightly or add noise
-    rr1_auto, cc1_auto = disk((32, 32), 15)
-    rr2_auto, cc2_auto = disk((68, 32), 15)
-    rr3_auto, cc3_auto = disk((52, 68), 18)
-
-    automated[rr1_auto, cc1_auto] = 1
-    automated[rr2_auto, cc2_auto] = 2
-    automated[rr3_auto, cc3_auto] = 3
-
-    mapping = multi_region_dice(automated,ground_truth)
-
-    print(mapping)
-    # plt.imshow(compute_cost(automated,ground_truth))
-    # Visualize both
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4))
-    axs[0].imshow(ground_truth, cmap='tab10')
-    axs[0].set_title('Ground Truth')
-    axs[1].imshow(automated, cmap='tab10')
-    axs[1].set_title('Automated Segmentation')
-    for ax in axs: ax.axis('off')
-    plt.tight_layout()
-    plt.show()
+    pass

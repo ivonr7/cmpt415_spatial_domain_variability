@@ -5,6 +5,7 @@ from typing import Callable
 import logging
 from skimage.draw import random_shapes
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 logger = logging.getLogger(__name__)
 '''
     Implementation of multi-region dice method
@@ -48,7 +49,6 @@ def merged_score(auto:np.ndarray,gt:np.ndarray,
                  M:np.ndarray, U:np.ndarray,
                  dist:Callable = dice):
     merged_scores = np.zeros(shape = (M.shape[0], U.size))
-    print(merged_scores)
     auto_merged, gt_mask = np.zeros(shape = auto.shape),np.zeros(shape=gt.shape)
 
     for i,region in enumerate(range(M.shape[0])):
@@ -60,8 +60,7 @@ def merged_score(auto:np.ndarray,gt:np.ndarray,
             auto_merged[auto == m1] = 1
             auto_merged[auto == u] = 1
 
-            merged_scores[i,j] = dice(auto_merged, gt)
-    print(merged_scores)
+            merged_scores[i,j] = dice(auto_merged.flatten(), gt.flatten())
     return merged_scores
         
 
@@ -74,13 +73,13 @@ def merge(auto, gt, M, col):
 
 
 '''
-    Implements Multi region dice using the 
+    Implements Cluster Matching Algorithmn using the 
     method given in the paper (link!!)
 
     computes a cost matrix using dice disimilarity measure and then 
     finds the optimal mapping between the two graphs
 '''
-def multi_region_dice(img:np.ndarray,gt:np.ndarray):
+def cluster_matching(img:np.ndarray,gt:np.ndarray):
     # Compute optimal mapping between inputs
     logger.info("calculating cost matrix")
     cost_matrix = compute_cost(img,gt)
@@ -90,35 +89,77 @@ def multi_region_dice(img:np.ndarray,gt:np.ndarray):
         logging.warning(f"No correspondance Found")
     
     # Merging
+    M1,M2 = [],[]
+    U1 = np.setdiff1d(np.unique(img), auto_map, assume_unique=True)
+    U2 = np.setdiff1d(np.unique(gt), gt_map, assume_unique=True)
     M = np.array(list(zip(auto_map,gt_map)))
 
-
+    auto_map,gt_map = np.expand_dims(auto_map,axis = 1).tolist(),np.expand_dims(gt_map,axis = 1).tolist()
     # If unmatched aut match to gt
-    if auto_map.size != np.unique(img).size: 
-        U = np.setdiff1d(M[0,:],np.unique(img))
-        scores = merged_score(img,gt,M,U)
-        best = np.argmin(scores, axis=1)
-        auto_map = []
+    if U1.size > 0: 
+        scores = merged_score(img,gt,M,U1)
+        best = np.argmin(scores, axis=0)
         for i,region in enumerate(best):
             m1,m2 = M[region,:]
-            if cost_matrix[m1,m2] < scores[region,i]: auto_map.append((m1,U[i]))
-    
-    # if unmatched gt match to auto
-    if gt_map.size != np.unique(gt).size: 
-        U = np.setdiff1d(M[1,:],np.unique(gt))
-        scores = merged_score(gt,img,M,U)
-        print(scores)
-        best = np.argmin(scores, axis=1)
-        gt_map = []
+            if cost_matrix[m1,m2] < scores[region,i]: 
+                auto_map[region] = (m1,U1[i])
+
+    if U2.size > 0: 
+        scores = merged_score(img,gt,M,U2)
+        best = np.argmin(scores, axis=0)
         for i,region in enumerate(best):
             m1,m2 = M[region,:]
-            if cost_matrix[m1,m2] < scores[region,i]: auto_map.append((m2,U[i]))
-    
+            if cost_matrix[m1,m2] < scores[region,i]: 
+                gt_map[region] = (m1,U2[i])
     return auto_map, gt_map
-    
 
+'''
+    Returns Dice Score between Clusters
+'''
+def multi_region_dice(img1,img2):
+    matched1, matched2 = cluster_matching(img1,img2)
+    scores = []
+    for region in zip(matched1,matched2):
+        region_mask1 = np.zeros(img1.shape)
+        region_mask2 = np.zeros(img2.shape)
+        for clust in region[0]:
+            region_mask1[img1 == int(clust)] = 1
+        for clust in region[1]:
+            region_mask2[img2 == int(clust)] = 1
+        # Divide by zero protection
+        if region_mask1.max() == 0 and region_mask2.max() == 0:
+            scores.append(0)
+        else:
+            scores.append(
+                1 - dice(region_mask1.flatten(),region_mask2.flatten())
+            )
+    return np.array(scores), matched1, matched2
 
-
-
+def plot_cluster_match(img1,img2,map1,map2):
+    matched_1, matched_2= np.zeros(shape=img1.shape), np.zeros(shape=img2.shape)
+    base_cmap = plt.cm.get_cmap('tab10',matched_1.shape[0])
+    cmap = ListedColormap(base_cmap.colors[:matched_1.shape[0]])
+    for i,(region1,region2) in enumerate(zip(map1,map2)):
+        for clust in region1:
+            matched_1[img1 == clust] = i
+        for clust in region2: 
+            matched_2[img2 == clust] = i 
+    plt.subplot(2,2,1)
+    plt.imshow(img1,cmap=cmap)
+    plt.title("Method 1")
+    plt.subplot(2,2,2)
+    plt.imshow(matched_1,cmap=cmap)
+    plt.title("Method 1 Matched")
+    plt.subplot(2,2,3)
+    plt.imshow(img2,cmap=cmap)
+    plt.title("Method 2")
+    plt.subplot(2,2,4)
+    plt.title("Method 2 Matched")
+    plt.imshow(matched_2,cmap=cmap)
+    plt.show()
 if __name__ == "__main__":
-    pass
+    clust1 = plt.imread("output/MISC2/MISC2_151675_analysis__clustering_graphclust_clusters.csv_.tif")[:,:,0].squeeze()
+    clust2 = plt.imread("output/MISC2/MISC2_151675_MISC2spagcn.csv_.tif")[:,:,0].squeeze()
+
+    auto, gt = cluster_matching(clust1,clust2)
+    plot_cluster_match(clust1,clust2,auto,gt)

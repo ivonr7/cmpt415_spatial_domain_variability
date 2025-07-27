@@ -7,6 +7,7 @@ import numpy as np
 import sys
 from tqdm.auto import tqdm
 import argparse
+import logging
 def compare_unique(sample_folder:str):
     mr_files = list(Path(sample_folder).glob("*.tif"))
     processed = set()
@@ -48,9 +49,15 @@ def compare_all(sample_folder:str):
         labels=methods
     )
     plt.title("MRDice Agreement Between Methods")
+    # plt.show()
     plt.savefig(Path(sample_folder) / "mrdice_matrix.png")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run multi-region dice comparison on a folder of TIFF segmentations.")
     parser.add_argument("sample_folder", type=str, help="Path to folder containing .tif segmentation files.")
+    parser.add_argument("-l",type=str,default=None)
+        
     args = parser.parse_args()
-    compare_all(args.sample_folder)
+    if args.l:
+        logging.basicConfig(filename=args.l,filemode='w',level=logging.INFO)
+
+    compare_unique(args.sample_folder)

@@ -36,7 +36,7 @@ def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
         for j in range(cost_matrix.shape[1]):
             gt_mask[:,:] = 0
             gt_mask[gt == gt_labels[j]] = 1
-            cost_matrix[i,j] = dist(auto_mask.flatten(),gt_mask.flatten())
+            cost_matrix[i,j] = np.abs(dist(auto_mask.flatten(),gt_mask.flatten()))
     return cost_matrix
 
 
@@ -48,19 +48,19 @@ def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
 def merged_score(auto:np.ndarray,gt:np.ndarray,
                  M:np.ndarray, U:np.ndarray,
                  dist:Callable = dice):
-    merged_scores = np.zeros(shape = (M.shape[0], U.size))
+    merged_scores = np.zeros(shape = (U.size,M.shape[0]))
     auto_merged, gt_mask = np.zeros(shape = auto.shape),np.zeros(shape=gt.shape)
 
     for i,region in enumerate(range(M.shape[0])):
         m1,m2 = M[region,:]
-        gt_mask[:,:] = 0 
-        gt_mask[gt == m2] = 1
+        gt_mask[:,:] = np.False_ 
+        gt_mask[gt == m2] = np.True_
         for j,u in enumerate(U):
-            auto_merged[:,:] = 0
-            auto_merged[auto == m1] = 1
-            auto_merged[auto == u] = 1
+            auto_merged[:,:] = np.False_
+            auto_merged[auto == m1] = np.True_
+            auto_merged[auto == u] = np.True_
 
-            merged_scores[i,j] = dice(auto_merged.flatten(), gt.flatten())
+            merged_scores[j,i] = np.abs(dice(auto_merged.flatten(), gt.flatten()))
     return merged_scores
         
 
@@ -98,19 +98,28 @@ def cluster_matching(img:np.ndarray,gt:np.ndarray):
     # If unmatched aut match to gt
     if U1.size > 0: 
         scores = merged_score(img,gt,M,U1)
-        best = np.argmin(scores, axis=0)
-        for i,region in enumerate(best):
-            m1,m2 = M[region,:]
-            if cost_matrix[m1,m2] < scores[region,i]: 
-                auto_map[region] = (m1,U1[i])
+        for i,u in enumerate(U1):
+            for region, score in enumerate(scores[i,:]):
+                m1,m2 = M[region,:]
+                scores[i,region] = cost_matrix[m1,m2] - score
+            # If there was an improvement ie cost_mat > merged_score
+            # then add
+            if scores[i,:].max() > 0:
+                logger.info(f"Merging U1 score improvement! {scores[i,:].max()}")
+                auto_map[np.argmax(scores[i,:])] = (*auto_map[region],u)
+                
 
     if U2.size > 0: 
-        scores = merged_score(img,gt,M,U2)
-        best = np.argmin(scores, axis=0)
-        for i,region in enumerate(best):
-            m1,m2 = M[region,:]
-            if cost_matrix[m1,m2] < scores[region,i]: 
-                gt_map[region] = (m1,U2[i])
+        scores = merged_score(gt,img,M,U2)
+        for i,u in enumerate(U2):
+            for region, score in enumerate(scores[i,:]):
+                m1,m2 = M[region,:]
+                scores[i,region] = cost_matrix[m1,m2] - score
+            # If there was an improvement ie cost_mat > merged_score
+            # then add
+            if scores[i,:].max() > 0:
+                logger.info(f"Merging U2 score improvement! {scores[i,:].max()}")
+                gt_map[np.argmax(scores[i,:])] = (*gt_map[region],u)
     return auto_map, gt_map
 
 '''
@@ -159,7 +168,9 @@ def plot_cluster_match(img1,img2,map1,map2):
     plt.show()
 if __name__ == "__main__":
     clust1 = plt.imread("output/MISC2/MISC2_151675_analysis__clustering_graphclust_clusters.csv_.tif")[:,:,0].squeeze()
-    clust2 = plt.imread("output/MISC2/MISC2_151675_MISC2spagcn.csv_.tif")[:,:,0].squeeze()
+    clust2 = plt.imread("output/MISC2/MISC2_151675_analysis__clustering_kmeans_5_clusters_clusters.csv_.tif")[:,:,0].squeeze()
+
 
     auto, gt = cluster_matching(clust1,clust2)
+    print(auto,gt)
     plot_cluster_match(clust1,clust2,auto,gt)

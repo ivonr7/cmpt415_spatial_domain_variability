@@ -18,7 +18,6 @@ def main(annotation_folder:str, output:str,hest_dir:str = '../../hest_data'):
         slide = sample.meta['subseries']
         methods = [method.resolve() for method in annotators.glob(slide + '*')] # regex search for slide id
         annotations = aa.join_annotators(methods) # join seperate dataframes
-        print(annotations.shape)
         sample.adata.obs = aa.join_annotation(sample.adata,annotations)
         sample.adata.write(Path(output) / (id+".h5"))
 

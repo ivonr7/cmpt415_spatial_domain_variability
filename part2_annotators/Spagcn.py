@@ -18,7 +18,7 @@ from pathlib import Path
 import logging
 import argparse 
 logger = logging.getLogger(__name__)
-def main(hest_folder:str,save_folder:str):
+def main(hest_folder:str,save_folder:str,n_clusters:int = 7):
     ids = [f"MISC{i}" for i in range(1,13)]
     for i,sample in enumerate(iter_hest(hest_dir=hest_folder,id_list= ids)):
 
@@ -50,7 +50,7 @@ def main(hest_folder:str,save_folder:str):
         #TODOset as parameters to do full sweeps
         adata.obs["pred"]= spg.detect_spatial_domains_ez_mode(
             adata, wsi, x_array, y_array, x_pixel, y_pixel,
-            n_clusters=7, histology=True, s=1, b=49, p=0.5, 
+            n_clusters=n_clusters, histology=True, s=1, b=49, p=0.5, 
             r_seed=100, t_seed=100, n_seed=100
         )
         adata.obs["pred"]=adata.obs["pred"].astype('category')
@@ -59,8 +59,8 @@ def main(hest_folder:str,save_folder:str):
         adata.obs["refined_pred"]=spg.spatial_domains_refinement_ez_mode(sample_id=adata.obs.index.tolist(), pred=adata.obs["pred"].tolist(), x_array=x_array, y_array=y_array, shape="hexagon")
         adata.obs["refined_pred"]=adata.obs["refined_pred"].astype('category')
 
-        adata.obs["pred"].reset_index().to_csv(
-            Path(save_folder) / (slide + "_" + ids[i] + "spagcn.csv"),
+        adata.obs["refined_pred"].reset_index().to_csv(
+            Path(save_folder) / (slide + "_" + ids[i] + f"spagcn_{n_clusters}_clusters.csv"),
             header = ["Barcode","Cluster"],
             index = False
         )
@@ -77,7 +77,10 @@ if __name__ == "__main__":
         type=str,
         help="Folder to save SpaGCN results"
     )
+    parser.add_argument(
+        '-k', default=7,type=int,help="number of clusters"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-    main(args.hest_folder, args.save_folder)
+    main(args.hest_folder, args.save_folder,n_clusters=args.k)

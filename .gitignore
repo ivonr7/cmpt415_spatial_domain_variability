@@ -3,6 +3,7 @@ venv/*
 *.jp*
 setup.sh
 data*
-__pycache__/*
+*__pycache__/*
 *.egg*
-output
+output*
+methods*

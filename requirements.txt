@@ -5,5 +5,6 @@ datasets
 scanpy
 squidpy
 matplotlib_scalebar
+matplotlib
+seaborn
 scikit-image
-openslide

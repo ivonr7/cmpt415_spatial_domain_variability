@@ -12,9 +12,10 @@ import numpy as np
 def mutual_info(img1:np.ndarray,img2:np.ndarray):
     assert img1.shape == img2.shape
     # Compute flattened indexes
-    idx = img1.flatten() * img1.shape[0] + img2.flatten() 
+    brightest = max(img1.max(),img2.max())
+    idx = img1.flatten() * brightest + img2.flatten() 
     j_hist = np.bincount(idx)
-    return entropy(j_hist.flatten())
+    return entropy(j_hist.flatten() / j_hist.sum())
 
 
 '''

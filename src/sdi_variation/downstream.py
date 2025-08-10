@@ -13,12 +13,13 @@ def nhood(adata:ad.AnnData,clust:str = "cluster"):
     sq.gr.nhood_enrichment(
         adata,cluster_key=clust
     )
-def Morans_I(adata:ad.AnnData):
+def Morans_I(adata:ad.AnnData,workers:int = 1):
     sq.gr.spatial_neighbors(adata)
     sq.gr.spatial_autocorr(
         adata,
         mode = 'moran',
-        n_perms = 100
+        n_perms = 100,
+        n_jobs = workers
     )
 
 

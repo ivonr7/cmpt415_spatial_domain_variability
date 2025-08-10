@@ -14,11 +14,13 @@ def main(sample:str,output:str, ext:str = ".tif"):
     adata = read_h5ad(sample)
     annotators = list(csv_columns(adata.obs.columns))
     id = Path(sample).stem
-    if not Path(output).exists(): Path(output).mkdir(exist_ok=True)
+    mask_folder = Path(output) / "masks"
+    if not mask_folder.exists(): 
+        mask_folder.mkdir()
     for annotater in annotators:
         img = spots_to_segmentation(adata.obs, annotater)
         Image.fromarray(img).save(
-            Path(output) / "_".join((id,annotater,ext))
+            mask_folder / "_".join((id,annotater.strip(".csv"),ext))
         )
 
 

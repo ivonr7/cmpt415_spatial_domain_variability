@@ -16,7 +16,7 @@ def moransI(id:str,adata:AnnData,workers:int):
         n_perms=100,
         n_jobs=workers,
     )
-    return id, adata.uns['moranI'].fillna(-1)
+    return id, adata.uns['moranI']
 
 '''
     Plot Morans I statistic for All SpatialLIBD samples
@@ -26,9 +26,14 @@ def main(output:str,hest_dir:str = '../hest_data',workers:int = 12):
     samples = iter_hest(hest_dir=hest_dir,id_list=ids)
     i_stats = []
     for sample in samples:
-        i_stats.append(
-            moransI(sample.meta['id'],sample.adata,workers)
-        )
+        if not 'moranI' in list(sample.adata.uns.keys()):
+            i_stats.append(
+                moransI(sample.meta['id'],sample.adata,workers)
+            )
+        else:
+            i_stats.append(
+                (sample.meta['id'],sample.adata.uns['moranI'])
+            )
     plt.violinplot(
         [i[1]['I'] for i in i_stats], vert=False
     )

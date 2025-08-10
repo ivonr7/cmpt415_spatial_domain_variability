@@ -16,6 +16,8 @@ import logging
 def compare_all(sample_folder:str):
     mr_files = list(Path(sample_folder).glob("*.tif"))
     score_mat = np.zeros(shape=(len(mr_files),len(mr_files)))
+    nmi_folder = Path(sample_folder).parent / "nmi"
+    nmi_folder.mkdir(exist_ok=True)
     for i, method1 in tqdm(enumerate(mr_files)):
         for j, method2 in enumerate(mr_files):
             img1 = plt.imread(method1.resolve())
@@ -41,7 +43,7 @@ def compare_all(sample_folder:str):
     plt.title("NMI Score Between Methods")
     # plt.show()
     plt.tight_layout()
-    plt.savefig(Path(sample_folder) / "nmi_matrix.png")
+    plt.savefig(nmi_folder / "nmi_matrix.png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run multi-region dice comparison on a folder of TIFF segmentations.")

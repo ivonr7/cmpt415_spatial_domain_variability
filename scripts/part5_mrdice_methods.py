@@ -16,6 +16,8 @@ import logging
 def compare_unique(sample_folder:str):
     mr_files = list(Path(sample_folder).glob("*.tif"))
     processed = set()
+    mrdice_folder = Path(sample_folder).parent / "mrdice"
+    mrdice_folder.mkdir(exist_ok=True)
     for auto,gt in tqdm(product(mr_files,mr_files)):
         # Cartesian product consider (x,y) and (y,x) 
         # as distinct but dice is symetric
@@ -30,12 +32,14 @@ def compare_unique(sample_folder:str):
         data = pd.DataFrame(
             data=mrd_data
         )
-        data.to_csv(Path(sample_folder) / out_file)
+        data.to_csv(mrdice_folder / out_file)
         processed.add((auto,gt))
 
 def compare_all(sample_folder:str):
     mr_files = list(Path(sample_folder).glob("*.tif"))
     score_mat = np.zeros(shape=(len(mr_files),len(mr_files)))
+    mrdice_folder = Path(sample_folder).parent / "mrdice"
+    mrdice_folder.mkdir(exist_ok=True)
     for i, method1 in tqdm(enumerate(mr_files)):
         for j, method2 in enumerate(mr_files):
             img1 = plt.imread(method1.resolve())
@@ -59,10 +63,9 @@ def compare_all(sample_folder:str):
 
 
     plt.title("MRDice Agreement Between Methods")
-    # plt.colorbar()
     # plt.show()
     plt.tight_layout()
-    plt.savefig(Path(sample_folder) / "mrdice_matrix.png")
+    plt.savefig(mrdice_folder / "mrdice_matrix.png")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run multi-region dice comparison on a folder of TIFF segmentations.")
     parser.add_argument("sample_folder", type=str, help="Path to folder containing .tif segmentation files.")

@@ -14,8 +14,8 @@ def spots_to_segmentation(vars:pd.DataFrame,clusters:pd.DataFrame|str):
     #Get 'array_col' 'array_row' to calculate adjacency matrix
     labeled_indicies = vars.loc[:,['array_col', 'array_row',clusters]]
     # calculate extents to get size allocate matrix
-    col_range = labeled_indicies['array_col'].max() 
-    row_range = labeled_indicies['array_row'].max() 
+    col_range = labeled_indicies['array_col'].max().astype(np.uint32) 
+    row_range = labeled_indicies['array_row'].max().astype(np.uint32)
     
     # # Offset in case array positions can be negative
     # labeled_indicies['array_col'] += labeled_indicies['array_col'].abs().min()
@@ -25,10 +25,10 @@ def spots_to_segmentation(vars:pd.DataFrame,clusters:pd.DataFrame|str):
 
     # index matrix with indexes and set to cluster label
     spot_image[
-        labeled_indicies['array_row'],
-        labeled_indicies['array_col']
+        labeled_indicies['array_row'].astype(np.uint32),
+        labeled_indicies['array_col'].astype(np.uint32)
     ] = labeled_indicies[clusters]
-    return spot_image
+    return spot_image,col_range,row_range
 
 
 

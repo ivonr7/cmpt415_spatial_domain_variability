@@ -19,7 +19,6 @@ def main(sample:str,output:str, ext:str = ".tif"):
         mask_folder.mkdir()
     for annotater in annotators:
         img,cols,rows = spots_to_segmentation(adata.obs, annotater)
-        print(cols,rows)
         Image.fromarray(img).save(
             mask_folder / "_".join((annotater.strip(".csv"),ext))
         )

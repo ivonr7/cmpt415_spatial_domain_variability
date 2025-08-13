@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
     hest1k anndata
 '''
 def join_annotation(adata:AnnData, annotation:pd.DataFrame):
-    return pd.concat([adata.obs,annotation], join="outer", axis = 1)
+    joined =  pd.concat([adata.obs,annotation], join="outer", axis = 1)
+    joined['in_tissue'] = joined['in_tissue'].astype(bool)
+    return joined.loc[adata.obs.index]
 
 def join_annotators(annotators:list[str],index:str = "Barcode"):
     logging.info(annotators)   

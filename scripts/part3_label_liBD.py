@@ -22,9 +22,12 @@ def main(annotation_folder:str, output:str,
         labeled with the same id ie (151507)
     '''
     for id,sample in tqdm(zip(ids,samples), desc = "adding annotations"):
-        logging.info(f"Annotating {id}")
+        logger.info(f"Annotating {id}")
         slide = sample.meta['subseries']
         methods = [method.resolve() for method in annotators.glob(slide + '*')] # regex search for slide id
+        if len(methods) == 0: 
+            logger.error(f"No methods found for {id} {slide}")
+            continue
         annotations = aa.join_annotators(methods) # join seperate dataframes
         sample.adata.obs = aa.join_annotation(sample.adata,annotations)
 

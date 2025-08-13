@@ -124,7 +124,7 @@ def cluster_matching(img:np.ndarray,gt:np.ndarray):
             # then add
             if scores[i,:].max() > 0:
                 logger.info(f"Merging U2 score improvement! {scores[i,:].max()}")
-                gt_map[np.argmax(scores[i,:])] = (*gt_map[region],u)
+                gt_map[np.argmax(scores[i,:])] = [*gt_map[region],int(u)]
     return auto_map, gt_map
 
 '''
@@ -172,8 +172,8 @@ def plot_cluster_match(img1,img2,map1,map2):
     plt.imshow(matched_2,cmap=cmap)
     plt.show()
 if __name__ == "__main__":
-    clust1 = plt.imread("methods/MISC3/MISC3_151674_deepst.csv_.tif")[:,:,0].squeeze()
-    clust2 = plt.imread("methods/MISC3/MISC3_151674_MISC3spagcn.csv_.tif")[:,:,0].squeeze()
+    clust1 = plt.imread("methods/MISC1_151676/masks/151676_deepst_3_cluster_.tif")[:,:,0].squeeze()
+    clust2 = plt.imread("methods/MISC1_151676/masks/151676_deepst_6_cluster_.tif")[:,:,0].squeeze()
 
 
     auto, gt = cluster_matching(clust1,clust2)

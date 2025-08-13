@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 from pathlib import Path
 from sdi_variation.downstream import method_cols,index_genes,\
-    cluster_mask,plot_gene_dist,get_panel
+    cluster_mask,plot_gene_dist,get_panel,plot_gene_pdf
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +60,8 @@ def per_label(
 '''
 def per_method(sample_file:str, 
          t:float = 0.3,
-         col_filter:str = '.csv'):
+         col_filter:str = '.csv',
+         plot_func = plot_gene_dist):
     sample = ad.read_h5ad(sample_file)
     sample_folder = Path(sample_file).parent
     plot_folder = sample_folder / "gene_dists"
@@ -77,7 +78,7 @@ def per_method(sample_file:str,
         labels = sample.obs[method]
         logger.info(f"{method} found {labels.unique().size} clusters")
         logger.info("Plotting Gene Distribution Variation")
-        plt.figure(figsize=(6,10))
+        ax=plt.figure(figsize=(10,10)).add_subplot()
         for i,label in enumerate(labels.unique()):
             logger.info(f"Plotting Cluster {label}")
             clust = cluster_mask(
@@ -88,11 +89,11 @@ def per_method(sample_file:str,
                 row_indexer=clust,
                 col_indexer=goi
             ).sum(axis=0)
-            plot_gene_dist(
+            plot_func(
                 clust_genes,
                 panel_size,
                 label=f"{method.strip('.csv')} Cluster {label}",
-                colour=cmap(i / len(labels.unique()))
+                colour=cmap(i / len(labels.unique())),ax=ax
             )
         plt.title(
             f"Clustered Gene Distribution(n={panel_size})\n{method.strip(".csv")}"
@@ -107,7 +108,8 @@ def per_method(sample_file:str,
 
 logging.basicConfig(level=logging.INFO)
 per_method(
-    '/home/isaac/dev/sfu/cmpt415/cmpt415_spatial_domain_variability/methods/MISC1_151676/MISC1.h5',
-    col_filter="deepst",
-    t=0.4
+    'methods/MISC3_151674/MISC3.h5',
+    col_filter="csv",
+    t=0.4,
+    plot_func=plot_gene_pdf
     )

@@ -8,7 +8,7 @@ import squidpy as sq
 from anndata import AnnData, read_h5ad
 import matplotlib.pyplot as plt
 
-from sdi_variation.downstream import Morans_I
+from sdi_variation.downstream import sepal
 
 def common_genes(samples:list):
     index = samples[0].index
@@ -24,25 +24,25 @@ def main(input_dir:str,output:str,workers:int = 12):
     i_stats = []
     for sample_file in sample_files:
         sample = read_h5ad(sample_file)
-        if not 'moranI' in list(sample.uns.keys()):
+        if not 'sepal_score' in list(sample.uns.keys()):
             i_stats.append(
-                Morans_I(sample,workers).dropna()
+                sepal(sample,workers)
             )
         else:
             i_stats.append(
-                sample.uns['moranI'].dropna()
+                sample.uns['sepal_score']
             )
     index = common_genes(i_stats)
     plt.violinplot(
-        [i.loc[index,'I'] for i in i_stats], vert=False
+        [i.loc[index,'sepal_score'] for i in i_stats], vert=False
     )
     plt.yticks(
         list(range(len(i_stats) + 1)), 
         labels=[''] + [sf.stem for sf in sample_files]
     )
-    plt.title("Spatial Autocorrelation across Spatial Lib D")
+    plt.title("Sepal Score across Spatial Lib D")
     plt.tight_layout()
-    plt.savefig(Path(output) / "morans_i_spatialliBD.png")
+    plt.savefig(Path(output) / "sepal_score_spatialliBD.png")
 
 
 

@@ -26,9 +26,10 @@ def compare_all(sample_folder:str):
             score_mat[i,j] = score
         
     methods = [
-        "_".join(file.stem.split('.')[0].split("_")[2:]) \
+        "_".join(file.stem.split('.')[0].split("_")[1:]) \
         for file in mr_files
         ]
+    t_mask = np.triu(score_mat)
     plt.figure(figsize=(10,10))
     sns.heatmap(
         score_mat,
@@ -36,7 +37,8 @@ def compare_all(sample_folder:str):
         yticklabels=methods,
         cmap='viridis',
         annot=True,
-        fmt=".1f"
+        fmt=".1f",
+        mask=t_mask
     )
 
 

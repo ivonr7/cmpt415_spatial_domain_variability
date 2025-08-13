@@ -10,7 +10,7 @@ import sys
 from tqdm.auto import tqdm
 import argparse
 import logging
-
+from itertools import repeat
 
 
 def compare_unique(sample_folder:str):
@@ -28,14 +28,20 @@ def compare_unique(sample_folder:str):
         img2 = plt.imread(gt.resolve())
         mrd_data = {}
         mrd_data['scores'],mrd_data['map1'],mrd_data['map2'] = multi_region_dice(img1,img2)
-        out_file = str(auto.name).split(".")[0] + "_vs_" + str(gt.name).split('.')[0] + ".csv"
+        
+        diff = len(mrd_data["map1"]) - len(mrd_data['map2'])
+
+        mrd_data['method1'] = list(repeat(auto.stem.strip('_'),len(mrd_data['scores'])))
+        mrd_data['method2'] = list(repeat(gt.stem.strip('_'),len(mrd_data['scores'])))
+
+        out_file = str(auto.name).split(".")[0].strip('_') + "_vs_" + str(gt.name).split('.')[0].strip('_') + ".csv"
         data = pd.DataFrame(
             data=mrd_data
         )
-        data.to_csv(mrdice_folder / out_file)
+        data.to_csv(mrdice_folder / out_file,index=False)
         processed.add((auto,gt))
 
-def compare_all(sample_folder:str):
+def compare_all(sample_folder:str,ut:bool=True):
     mr_files = list(Path(sample_folder).glob("*.tif"))
     score_mat = np.zeros(shape=(len(mr_files),len(mr_files)))
     mrdice_folder = Path(sample_folder).parent / "mrdice"
@@ -48,9 +54,10 @@ def compare_all(sample_folder:str):
             score_mat[i,j] = np.median(scores)
         
     methods = [
-        "_".join(file.stem.split('.')[0].split("_")[2:]) \
+        "_".join(file.stem.split('.')[0].split("_")[1:]) \
         for file in mr_files
         ]
+    t_mask = np.triu(score_mat)
     plt.figure(figsize=(10,10))
     sns.heatmap(
         score_mat,
@@ -58,7 +65,8 @@ def compare_all(sample_folder:str):
         yticklabels=methods,
         cmap='viridis',
         annot=True,
-        fmt=".1f"
+        fmt=".1f",
+        mask=t_mask
     )
 
 

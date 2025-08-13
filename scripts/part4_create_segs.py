@@ -20,7 +20,7 @@ def main(sample:str,output:str, ext:str = ".tif"):
     for annotater in annotators:
         img = spots_to_segmentation(adata.obs, annotater)
         Image.fromarray(img).save(
-            mask_folder / "_".join((id,annotater.strip(".csv"),ext))
+            mask_folder / "_".join((annotater.strip(".csv"),ext))
         )
 
 

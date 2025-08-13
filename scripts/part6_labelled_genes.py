@@ -4,56 +4,11 @@ import numpy as np
 import logging
 import pandas as pd
 from pathlib import Path
+from sdi_variation.downstream import method_cols,index_genes,\
+    cluster_mask,plot_gene_dist,get_panel
 logger = logging.getLogger(__name__)
 
-def method_cols(columns:list,substr:str):
-    for col in columns:
-        if substr in col:
-            yield col
-'''
-    Plots a barplot of the gene distribution
-'''
-def plot_gene_dist(
-        count_vector:np.ndarray,
-        panel_size:int,
-        label:str = "",
-        colour = (0,0,1)
-    ):
-    plt.bar(
-        list(range(count_vector.shape[0])),
-        np.log(count_vector + 1),
-        alpha = 0.5,color = colour,label = label
-    )
-    plt.xlabel("Gene ID")
-    plt.ylabel(f"log(gene counts + 1)")
-    plt.xlim((0,panel_size))
 
-'''
-    Index Gene Expression Matrix
-'''
-def cluster_mask(method:pd.Series, cluster_id:int):
-    return method == cluster_id
-
-def index_genes(gene_mat:np.ndarray,row_indexer:np.ndarray,col_indexer = None):
-    if type(col_indexer) == np.ndarray:
-        return gene_mat[row_indexer]
-    else:
-        return gene_mat[row_indexer,:][:,col_indexer]
-
-def get_panel(sample:ad.AnnData,t:float):
-    if 'moranI' in list(sample.uns.keys()):
-        mI = sample.uns['moranI'] 
-        goi = mI['I'] >= t 
-        panel_size = goi.sum()  
-    else:
-        mI = None
-        goi = None
-        panel_size = sample.X.shape[0]
-    logger.info(
-        f"Gene Filtering={panel_size != sample.X.shape[0]} \
-            Gene Panel={panel_size}"
-        )
-    return mI, goi, panel_size
 '''
     plot Gene Distribution 
     across methods per cluster

@@ -6,7 +6,7 @@ import logging
 from skimage.draw import random_shapes
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -51,31 +51,58 @@ def compute_cost(img:np.ndarray,gt:np.ndarray,dist:Callable = dice):
     regions improves score
 '''
 def merged_score(auto:np.ndarray,gt:np.ndarray,
-                 M:np.ndarray, U:np.ndarray,
+                 mapping:dict, U:np.ndarray,
                  dist:Callable = dice):
-    merged_scores = np.zeros(shape = (U.size,M.shape[0]))
     auto_merged, gt_mask = np.zeros(shape = auto.shape),np.zeros(shape=gt.shape)
+    scores = {}
+    n_regions = np.unique(auto.flatten()).size
+    # For each Unmatched Region
+    # Calculate dice to existing Ground Truth (other) seg
+    # Save all the scores
+    for u in U:
+        # scores[u] = {}
+        scores[u] = np.ones(n_regions) 
+        for r_auto, r_gt in mapping.items():
+            auto_merged[auto == int(u)] = 1 # unmerged region
+            auto_merged[auto == int(r_auto)] = 1 # matched region
 
-    for i,region in enumerate(range(M.shape[0])):
-        m1,m2 = M[region,:]
-        gt_mask[:,:] = np.False_ 
-        gt_mask[gt == m2] = np.True_
-        for j,u in enumerate(U):
-            auto_merged[:,:] = np.False_
-            auto_merged[auto == m1] = np.True_
-            auto_merged[auto == u] = np.True_
+            gt_mask[gt == int(r_gt)] = 1 # gt region
 
-            merged_scores[j,i] = np.abs(dice(auto_merged.flatten(), gt.flatten()))
-    return merged_scores
+            # Calculate Dice Distance = 1 - DICE
+            # scores[u][r_auto] = dist(auto_merged.flatten(),gt_mask.flatten())
+            scores[u][r_auto] = dist(auto_merged.flatten(),gt_mask.flatten())
+            
+            # Clear Masks
+            auto_merged[:,:] = 0
+            gt_mask[:,:] = 0
+    return scores
         
 
 
-def merge(auto, gt, M, col):
-    U = np.setdiff1d(M[col,:],np.unique(auto))
-    scores = merged_score(auto,gt,M,U)
-    return U,np.argmin(scores, axis=1)
 
+def mapped_cost(img:np.ndarray,gt:np.ndarray,mapping:dict,dist:Callable = dice):
+    scores = {}
+    img_mask,gt_mask = np.zeros(img.shape),np.zeros(gt.shape)
+    for i,g in mapping.items():
+        img_mask[img == i] = 1
+        gt_mask[gt == g] = 1
+        scores[i] = dice(img_mask.flatten(),gt_mask.flatten())
+        img_mask[:,:] = 0
+        gt_mask[:,:] = 0
+    all_region_scores = np.ones(
+        np.unique(img.flatten()).size
+    )
+    all_region_scores[list(mapping.keys())] = [score for score in scores.values()]
+    return all_region_scores
 
+def merge(img,gt,mapping,mapping_score,unmerged):
+        scores = merged_score(img,gt,mapping,unmerged)
+        u_mapping = {}
+        for u in scores.keys():
+            improvement = mapping_score - scores[u]
+            most_imp = np.argmax(improvement)
+            u_mapping[u] = most_imp,scores[u][most_imp]
+        return u_mapping      
 
 '''
     Implements Cluster Matching Algorithmn using the 
@@ -89,75 +116,91 @@ def cluster_matching(img:np.ndarray,gt:np.ndarray):
     logger.info("calculating cost matrix")
     cost_matrix = compute_cost(img,gt)
     logger.info("finding mapping between regions")
+    # Bipartite Graph Matching
     auto_map,gt_map = linear_sum_assignment(cost_matrix)
+    # Using Dictionaries to store edge information
+    auto_outgoing = {int(auto):int(gt) for auto,gt in zip(auto_map,gt_map)}
+    gt_outgoing = {int(gt):int(auto) for auto,gt in zip(auto_map,gt_map)}
+    # What is the dice score between matched regions
+    dice_auto = mapped_cost(img,gt,auto_outgoing)
+    dice_gt = mapped_cost(gt,img,gt_outgoing)
+
     if cost_matrix.max() == 0:
         logging.warning(f"No correspondance Found")
     
-    # Merging
-    M1,M2 = [],[]
+    # Unmatched Regions
     U1 = np.setdiff1d(np.unique(img), auto_map, assume_unique=True)
     U2 = np.setdiff1d(np.unique(gt), gt_map, assume_unique=True)
-    M = np.array(list(zip(auto_map,gt_map)))
 
-    auto_map,gt_map = np.expand_dims(auto_map,axis = 1).tolist(),np.expand_dims(gt_map,axis = 1).tolist()
     # If unmatched aut match to gt
     if U1.size > 0: 
-        scores = merged_score(img,gt,M,U1)
-        for i,u in enumerate(U1):
-            for region, score in enumerate(scores[i,:]):
-                m1,m2 = M[region,:]
-                scores[i,region] = cost_matrix[m1,m2] - score
-            # If there was an improvement ie cost_mat > merged_score
-            # then add
-            if scores[i,:].max() > 0:
-                logger.info(f"Merging U1 score improvement! {scores[i,:].max()}")
-                auto_map[np.argmax(scores[i,:])] = (*auto_map[region],u)
-                
+        u_mapping = merge(
+            img,gt,auto_outgoing,
+            dice_auto,U1
+        )
+        for u,(m_auto,score) in u_mapping.items():
+            auto_outgoing[u] = auto_outgoing[m_auto]
+            dice_auto[m_auto] = score
 
     if U2.size > 0: 
-        scores = merged_score(gt,img,M,U2)
-        for i,u in enumerate(U2):
-            for region, score in enumerate(scores[i,:]):
-                m1,m2 = M[region,:]
-                scores[i,region] = cost_matrix[m1,m2] - score
-            # If there was an improvement ie cost_mat > merged_score
-            # then add
-            if scores[i,:].max() > 0:
-                logger.info(f"Merging U2 score improvement! {scores[i,:].max()}")
-                gt_map[np.argmax(scores[i,:])] = [*gt_map[region],int(u)]
-    return auto_map, gt_map
+        u_mapping = merge(
+            gt,img,gt_outgoing,
+            dice_gt,U2
+        )
+        for u,(m_gt,score) in u_mapping.items():
+           gt_outgoing[u] = gt_outgoing[m_gt]
+           dice_gt[m_gt] = score
 
-'''
-    Returns Dice Score between Clusters
-'''
-def multi_region_dice(img1,img2):
-    matched1, matched2 = cluster_matching(img1,img2)
-    scores = []
-    for region in zip(matched1,matched2):
-        region_mask1 = np.zeros(img1.shape)
-        region_mask2 = np.zeros(img2.shape)
-        for clust in region[0]:
-            region_mask1[img1 == int(clust)] = 1
-        for clust in region[1]:
-            region_mask2[img2 == int(clust)] = 1
-        # Divide by zero protection
-        if region_mask1.max() == 0 and region_mask2.max() == 0:
-            scores.append(0)
-        else:
-            scores.append(
-                1 - dice(region_mask1.flatten(),region_mask2.flatten())
-            )
-    return np.array(scores), matched1, matched2
+    # Generate Dataframe of the Mapping
+    graph = pd.DataFrame()
+    n_auto  = len(list(auto_outgoing.keys()))
+    n_gt = len(list(gt_outgoing.keys()))
 
-def plot_cluster_match(img1,img2,map1,map2):
+    if n_auto > n_gt:
+        region_col = 's1'
+        edge_col = 's2'
+        regions = list(auto_outgoing.keys())
+        edges = list(auto_outgoing.values())
+        scores = 1- dice_auto
+    elif n_gt > n_auto:
+        region_col = 's2'
+        edge_col = 's1'
+        regions = list(gt_outgoing.keys())
+        edges = list(gt_outgoing.values())
+        scores = 1- dice_gt
+    else:
+        region_col = 's1'
+        edge_col = 's2'
+        regions = list(auto_outgoing.keys())
+        edges = list(auto_outgoing.values())
+        scores = 1- dice_auto
+    graph[region_col] = regions
+    graph[edge_col] = edges
+    graph['dice'] = scores
+
+
+    
+    return graph,n_auto >= n_gt
+
+
+
+def plot_cluster_match(img1,img2,graph:pd.DataFrame):
     matched_1, matched_2= np.zeros(shape=img1.shape), np.zeros(shape=img2.shape)
     base_cmap = plt.cm.get_cmap('tab10',matched_1.shape[0])
     cmap = ListedColormap(base_cmap.colors[:matched_1.shape[0]])
-    for i,(region1,region2) in enumerate(zip(map1,map2)):
-        for clust in region1:
-            matched_1[img1 == clust] = i
-        for clust in region2: 
-            matched_2[img2 == clust] = i 
+
+    n_regions = min(
+        graph['s1'].unique().size,
+        graph['s2'].unique().size
+    )
+
+    for r in range(n_regions):
+        over_r = graph.loc[graph['s2'] == r,'s1']
+        for o_r in over_r:
+            matched_1[img1 == o_r] = r
+        matched_2[img2 == r] = r
+
+    # Plot Matched masks
     plt.subplot(2,2,1)
     plt.imshow(img1,cmap=cmap)
     plt.title("Method 1")
@@ -170,12 +213,13 @@ def plot_cluster_match(img1,img2,map1,map2):
     plt.subplot(2,2,4)
     plt.title("Method 2 Matched")
     plt.imshow(matched_2,cmap=cmap)
-    plt.show()
 if __name__ == "__main__":
-    clust1 = plt.imread("methods/MISC1_151676/masks/151676_deepst_3_cluster_.tif")[:,:,0].squeeze()
-    clust2 = plt.imread("methods/MISC1_151676/masks/151676_deepst_6_cluster_.tif")[:,:,0].squeeze()
+    clust1 = plt.imread("methods/MISC1_151676/masks/151676_deepst_4_cluster_.tif")[:,:,0].squeeze()
+    clust2 = plt.imread("methods/MISC1_151676/masks/151676_deepst_4_cluster_.tif")[:,:,0].squeeze()
 
 
-    auto, gt = cluster_matching(clust1,clust2)
-    print(auto,gt)
-    plot_cluster_match(clust1,clust2,auto,gt)
+    mrdice_graph,order_by = cluster_matching(clust1,clust2)
+    # print(auto,gt)
+    print(mrdice_graph['dice'])
+    plot_cluster_match(clust1,clust2,mrdice_graph)
+    plt.show()

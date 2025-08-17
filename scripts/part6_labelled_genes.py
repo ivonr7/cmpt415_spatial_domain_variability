@@ -73,14 +73,19 @@ def per_method(sample_file:str,
     methods = list(method_cols(sample.obs.columns,substr=col_filter))
     logger.info(f"SDI Methods:\n {methods}")
     cmap = plt.get_cmap('tab20')
-
     for method in methods:
         labels = sample.obs[method]
-        logger.info(f"{method} found {labels.unique().size} clusters")
+        clusts = labels.unique()
+        clusts = clusts[~np.isnan(clusts)]
+        logger.info(f"{method} found {clusts.size} clusters")
         logger.info("Plotting Gene Distribution Variation")
-        ax=plt.figure(figsize=(10,10)).add_subplot()
-        for i,label in enumerate(labels.unique()):
+        fig, axes = plt.subplots(clusts.shape[0],figsize = (10,30))
+        gene_mat = np.log(sample.X.toarray())
+        for i,label in enumerate(clusts):
+            ax = axes[i]
+
             logger.info(f"Plotting Cluster {label}")
+            
             clust = cluster_mask(
                 sample.obs[method],label
             )
@@ -89,17 +94,21 @@ def per_method(sample_file:str,
                 row_indexer=clust,
                 col_indexer=goi
             ).sum(axis=0)
-            plot_func(
+            plot_gene_dist(
                 clust_genes,
                 panel_size,
                 label=f"{method.strip('.csv')} Cluster {label}",
                 colour=cmap(i / len(labels.unique())),ax=ax
             )
-        plt.title(
-            f"Clustered Gene Distribution(n={panel_size})\n{method.strip(".csv")}"
-        )
-        plt.legend(loc='upper left', bbox_to_anchor=(0, -0.1))
-
+            scale = np.log(clust_genes + 1).max()
+            plot_gene_pdf(
+                clust_genes,
+                panel_size,
+                label=f"{method.strip('.csv')} Cluster {label}",
+                colour=cmap(i / len(labels.unique())),ax=ax,scale=scale
+            )
+            ax.set_title(f"{method.strip('.csv')} Cluster {label}")
+            ax.set_ylim((0,8))
         plt.tight_layout()
         plt.savefig(plot_folder / f"gene_variation_{method.strip(".csv")}.png")
     
@@ -108,7 +117,7 @@ def per_method(sample_file:str,
 
 logging.basicConfig(level=logging.INFO)
 per_method(
-    'methods/MISC3_151674/MISC3.h5',
+    'deepst/MISC3_151674/MISC3.h5',
     col_filter="csv",
     t=0.4,
     plot_func=plot_gene_pdf

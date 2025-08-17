@@ -36,7 +36,9 @@ def compare_unique(sample_folder:str):
         data = pd.DataFrame(
             data=mrd_data
         )
-        plot_cluster_match(img1,img2,mrd_data)
+        plot_cluster_match(
+            img1,img2,mrd_data,
+        )
         plt.savefig(mrdice_folder / (out_file + ".png"))
         plt.close()
         data.to_csv(mrdice_folder / (out_file + ".csv"),index=False)

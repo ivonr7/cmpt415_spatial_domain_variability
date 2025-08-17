@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from sdi_variation.downstream import n_square
 from pathlib import Path
 import logging
-
+import argparse
 logger = logging.getLogger(__name__)
 
 def main(segmentation_folder:str,ext:str = 'tif'):
@@ -18,5 +18,8 @@ def main(segmentation_folder:str,ext:str = 'tif'):
     fig.savefig(output_folder / f"all_segs.png")
 
 
-
-main("deepst/MISC3_151674/masks")
+if __name__ =="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mask_folder',type=str,required=True,help="path to folder containing SDI Segmentations")
+    args = parser.parse_args()
+    main(args.mask_folder)

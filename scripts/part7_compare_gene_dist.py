@@ -6,50 +6,18 @@ import pandas as pd
 from pathlib import Path
 from tqdm.auto import tqdm
 from sdi_variation.downstream import method_cols,index_genes,\
-    cluster_mask,plot_gene_dist,get_panel
+    cluster_mask,plot_gene_dist,get_panel,bhattacharyya_distance,get_cols,n_square,merged_c_masks
 import ast
 logger = logging.getLogger(__name__)
 
-def get_cols(columns,keys):
-    for col in columns:
-        for key in keys:
-            if key in col:
-                yield col
-    
-def n_square(n:int):
-    return np.ceil(np.sqrt(n)).astype('int')
 
-def str2list(col):
-    items = []
-    for row in col:
-        try:
-            logging.info(row) 
-            items.append(ast.literal_eval(row))
-        except Exception as e:
-            logger.error(f'{e}')
-    return items
 
-def merge_mask(args:list):
-    if len(args) > 2:
-        mask = np.logical_or(args[0],args[1])
-        for arg in args[2:]:
-            mask = np.logical_or(mask,arg)
-    elif len(args) > 1:
-        mask = np.logical_or(args[0],args[1])
-    elif len(args) > 0:
-        mask = args[0]
-    else: return None
-    return mask
-
-def merged_c_masks(method:pd.Series,keys:list):
-    masks = [cluster_mask(method,key) for key in keys]
-    return merge_mask(masks)
-def plot_match(
+def plot_all(
         sample:ad.AnnData,region:pd.DataFrame,
-        goi:np.ndarray,panel_size:int):
+        goi:np.ndarray,panel_size:int,save_folder:Path
+):
     # logger.info(region.head())
     # MRDICE Mapped Methods
-    region[['map1','map2']] = region[['map1','map2']].apply(str2list,axis=0)
     methods = list(
         get_cols(sample.obs.columns,region.loc[0,['method1','method2']])
     )
@@ -58,44 +26,71 @@ def plot_match(
     m1 = methods[0]
     m2 = methods[1]
     # Plot paremeters
-    s_len = n_square(region.shape[0])
-    fig, axes = plt.subplots(s_len,s_len, figsize = (5*s_len,5 * s_len))
-    for i,row in tqdm(enumerate(region.itertuples(index = False))):
-        
-        c1 = row.map1
-        c2 = row.map2
-        score = row.scores
-        # Generate Mask of Spots Assigned to Each Cluster
-        cl_1 = merged_c_masks(sample.obs[m1],c1)
-        cl_2 = merged_c_masks(sample.obs[m2],c2)
-        
-        # Index Gene Expression Matrix to get cluster gene dist
-        gene_mat = sample.X.toarray()
-        g_dist_1 = index_genes(gene_mat,cl_1,goi).sum(axis = 0)
-        g_dist_2 = index_genes(gene_mat, cl_2,goi).sum(axis = 0)
+    under_col = region[['s1','s2']].max(axis = 0).idxmin()
+    over_col = region[['s1','s2']].max(axis = 0).idxmax()
+    x,y = region[['s1','s2']].max(axis = 0)
 
-        # Plot
-        x,y = i % s_len, i // s_len
-        ax = axes[y,x]
+def plot_match(
+        sample:ad.AnnData,region:pd.DataFrame,
+        goi:np.ndarray,panel_size:int,save_folder:Path
+    ):
+    # logger.info(region.head())
+    # MRDICE Mapped Methods
+    methods = list(
+        get_cols(sample.obs.columns,region.loc[0,['method1','method2']])
+    )
+    logger.info(region.loc[0,['method1','method2']])
+    logger.info(methods)
+    m1 = methods[0]
+    m2 = methods[1]
+    # Plot paremeters
+    under_col = region[['s1','s2']].max(axis = 0).idxmin()
+    over_col = region[['s1','s2']].max(axis = 0).idxmax()
+    region['bd'] = np.float64(0)
+    for r in tqdm(region[under_col].unique()):
+        merged = region.loc[region[under_col] == r, over_col]
+        if np.isnan(r) or np.isnan(merged).any():
+            logger.error("Nan values encountered")
+            continue
+        ax = plt.figure(figsize=(10,10)).add_subplot()
+
+
+        sr1_genes = merged_c_masks(
+            sample.obs[m1],
+            region.loc[merged,over_col].values.tolist())
+        sr2_genes = merged_c_masks(
+            sample.obs[m2],
+            [region.loc[r,under_col]]
+        )
+        
+        gene_counts = sample.X.toarray()
+        sr1_counts = index_genes(gene_counts,sr1_genes,goi).sum(axis=0)
+        sr2_counts = index_genes(gene_counts,sr2_genes,goi).sum(axis = 0)
+        d = bhattacharyya_distance(sr1_counts,sr2_counts)
+        region.loc[region[under_col] == r,'bd'] = d
+
         plot_gene_dist(
-            g_dist_1,
+            sr1_counts,
             panel_size=panel_size,
             colour=(0,0,1),
-            label=f"Cluster {c1}",
-            ax=ax
+            label=f"Cluster {merged.values.tolist()}",
+            ax = ax
         )
         plot_gene_dist(
-            g_dist_2,
+            sr2_counts,
             panel_size=panel_size,
             colour=(1,0,0),
-            label=f"Cluster {c2}",
-            ax=ax
+            label=f"Cluster {r}",
+            ax = ax
         )
-        ax.set_title(f"Cluster {c1} Cluster {c2} Gene Distribution\n (Optimal with MRD={score:.3f})")
         ax.legend()
-    plt.suptitle(f"{m1} vs {m2}")
-    fig.tight_layout()
-    return f"{m1} vs {m2}"
+        ax.set_title(f"Region {merged.values.tolist()} Region {r} Gene Distribution (Optimal BD={d:.4f})")
+        plt.tight_layout()
+        output_folder = save_folder / f"{m1}_vs_{m2}"
+        output_folder.mkdir(exist_ok=True)
+        plt.savefig(output_folder / f"Optimal_region{r}.png")
+        region.to_csv(output_folder / f"{m1}_vs_{m2}_scored.csv")
+
 
 
 
@@ -114,11 +109,9 @@ def plot_matches(sample_file:str,mrd_folder:str,t:float = 0.4):
         region = pd.read_csv(
             region_file
         )
-        fname = plot_match(sample,region,
-                   goi,panel_size)
-        plt.savefig(out_folder / (fname + '.png'))
-        plt.close()
+        plot_match(sample,region,
+                   goi,panel_size,save_folder=out_folder)
 
 logging.basicConfig(level=logging.INFO)
-folder = Path("methods/MISC1_151676")
-plot_matches(folder / "MISC1.h5",folder / "mrdice")
+folder = Path("clgraph/MISC3_151674")
+plot_matches(folder / "MISC3.h5",folder / "mrdice")

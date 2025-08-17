@@ -8,3 +8,4 @@ matplotlib_scalebar
 matplotlib
 seaborn
 scikit-image
+jupyter

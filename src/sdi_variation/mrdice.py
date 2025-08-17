@@ -184,7 +184,8 @@ def cluster_matching(img:np.ndarray,gt:np.ndarray):
 
 
 
-def plot_cluster_match(img1,img2,graph:pd.DataFrame):
+def plot_cluster_match(img1,img2,graph:pd.DataFrame,
+    titles:list = ["Method 1","Method 1 Matched","Method 2","Method 2 Matched"]):
     matched_1, matched_2= np.zeros(shape=img1.shape), np.zeros(shape=img2.shape)
     base_cmap = plt.cm.get_cmap('tab10',matched_1.shape[0])
     cmap = ListedColormap(base_cmap.colors[:matched_1.shape[0]])
@@ -203,18 +204,18 @@ def plot_cluster_match(img1,img2,graph:pd.DataFrame):
     # Plot Matched masks
     plt.subplot(2,2,1)
     plt.imshow(img1,cmap=cmap)
-    plt.title("Method 1")
+    plt.title(titles[0])
     plt.subplot(2,2,2)
     plt.imshow(matched_1,cmap=cmap)
-    plt.title("Method 1 Matched")
+    plt.title(titles[1])
     plt.subplot(2,2,3)
     plt.imshow(img2,cmap=cmap)
-    plt.title("Method 2")
+    plt.title(titles[2])
     plt.subplot(2,2,4)
-    plt.title("Method 2 Matched")
+    plt.title(titles[3])
     plt.imshow(matched_2,cmap=cmap)
 if __name__ == "__main__":
-    clust1 = plt.imread("methods/MISC1_151676/masks/151676_deepst_4_cluster_.tif")[:,:,0].squeeze()
+    clust1 = plt.imread("methods/MISC1_151676/masks/151676_deepst_3_cluster_.tif")[:,:,0].squeeze()
     clust2 = plt.imread("methods/MISC1_151676/masks/151676_deepst_4_cluster_.tif")[:,:,0].squeeze()
 
 

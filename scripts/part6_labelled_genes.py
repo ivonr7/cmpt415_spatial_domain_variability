@@ -6,6 +6,7 @@ import pandas as pd
 from pathlib import Path
 from sdi_variation.downstream import method_cols,index_genes,\
     cluster_mask,plot_gene_dist,get_panel,plot_gene_pdf
+import argparse
 logger = logging.getLogger(__name__)
 
 
@@ -114,11 +115,47 @@ def per_method(sample_file:str,
     
 
 
-
-logging.basicConfig(level=logging.INFO)
-per_method(
-    'deepst/MISC3_151674/MISC3.h5',
-    col_filter="csv",
-    t=0.4,
-    plot_func=plot_gene_pdf
+if __name__ =="__main__":
+    parser = argparse.ArgumentParser(
+        description="Run per_method on a sample file with optional threshold and column filter."
     )
+    
+    parser.add_argument(
+        "sample_file",
+        type=str,
+        help="Path to the sample file (e.g., .h5ad file)."
+    )
+    parser.add_argument(
+        "-t", "--threshold",
+        type=float,
+        default=0.3,
+        help="Threshold value (default: 0.3)."
+    )
+    parser.add_argument(
+        "-c", "--col-filter",
+        type=str,
+        default=".csv",
+        help="Column filter string (default: '.csv')."
+    )
+    # Optional: expose plot function choice
+    parser.add_argument(
+        "--plot-func",
+        choices=["plot_gene_dist"],  # extend if you have more
+        default="plot_gene_dist",
+        help="Which plotting function to use (default: plot_gene_dist)."
+    )
+    
+    args = parser.parse_args()
+
+    # Map string back to function
+    plot_func_map = {
+        "plot_gene_dist": plot_gene_dist,
+    }
+
+    per_method(
+        sample_file=args.sample_file,
+        t=args.threshold,
+        col_filter=args.col_filter,
+        plot_func=plot_func_map[args.plot_func]
+    )
+

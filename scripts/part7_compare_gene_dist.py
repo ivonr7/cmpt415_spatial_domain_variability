@@ -7,28 +7,11 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from sdi_variation.downstream import method_cols,index_genes,\
     cluster_mask,plot_gene_dist,get_panel,bhattacharyya_distance,get_cols,n_square,merged_c_masks
-import ast
+import argparse
 logger = logging.getLogger(__name__)
 
 
 
-def plot_all(
-        sample:ad.AnnData,region:pd.DataFrame,
-        goi:np.ndarray,panel_size:int,save_folder:Path
-):
-    # logger.info(region.head())
-    # MRDICE Mapped Methods
-    methods = list(
-        get_cols(sample.obs.columns,region.loc[0,['method1','method2']])
-    )
-    logger.info(region.loc[0,['method1','method2']])
-    logger.info(methods)
-    m1 = methods[0]
-    m2 = methods[1]
-    # Plot paremeters
-    under_col = region[['s1','s2']].max(axis = 0).idxmin()
-    over_col = region[['s1','s2']].max(axis = 0).idxmax()
-    x,y = region[['s1','s2']].max(axis = 0)
 
 def plot_match(
         sample:ad.AnnData,region:pd.DataFrame,
@@ -111,7 +94,34 @@ def plot_matches(sample_file:str,mrd_folder:str,t:float = 0.4):
         )
         plot_match(sample,region,
                    goi,panel_size,save_folder=out_folder)
+    
 
-logging.basicConfig(level=logging.INFO)
-folder = Path("clgraph/MISC3_151674")
-plot_matches(folder / "MISC3.h5",folder / "mrdice")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Plot matches from a sample file and MRD folder."
+    )
+    
+    parser.add_argument(
+        "sample_file",
+        type=str,
+        help="Path to the sample file (e.g., .h5ad)."
+    )
+    parser.add_argument(
+        "mrd_folder",
+        type=str,
+        help="Path to the MRD folder."
+    )
+    parser.add_argument(
+        "-t", "--threshold",
+        type=float,
+        default=0.4,
+        help="Threshold value (default: 0.4)."
+    )
+    
+    args = parser.parse_args()
+    
+    plot_matches(
+        sample_file=args.sample_file,
+        mrd_folder=args.mrd_folder,
+        t=args.threshold
+    )

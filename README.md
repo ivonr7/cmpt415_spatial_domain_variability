@@ -1,6 +1,6 @@
 ## Analyzing Variability in Domain Identification Methods
 
-This repository contains all the methods for re-creating the results presented in [Variation in Spatial Domain Identification Methods]('assets/SFU_CMPT415_Summer2025_ProjectReport_Isaac.pdf')
+This repository contains all the methods for re-creating the results presented in [Variation in Spatial Domain Identification Methods](assets/SFU_CMPT415_Summer2025_ProjectReport_Isaac.pdf)
 
 ## Repository Layout
 ```python
